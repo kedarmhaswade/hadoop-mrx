@@ -5,3 +5,6 @@ target
 
 *.bz2
 *.csv
+*.zip
+*.swp
+*.txt
