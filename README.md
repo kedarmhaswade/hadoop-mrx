@@ -7,6 +7,8 @@ Details
 =======
 The Hadoop for Dummies has got this example to explain how to write the Java MapReduce client. The code provided works, but there's no citation for a working maven based project that's ready to run. This project fills that void. Just clone the repo and build it with Maven 3. 
 
+There are other examples here as well.
+
 Commands:
 
 1. mvn install
