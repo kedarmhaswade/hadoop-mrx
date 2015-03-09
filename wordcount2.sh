@@ -14,7 +14,8 @@ source ${HOME}/scripts/bash_functions.sh
 MY_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 INPUT_DIR=${MY_DIR}/txtbooks
 OUTPUT_DIR=${MY_DIR}/wordcount
-
+HADOOP_JAR=${MY_DIR}/target/hadoop-mr-ex-1.0-SNAPSHOT-jar-with-dependencies.jar
+HDFS_INPUT_DIR=wordcount2
 build_maven () {
   cd ${MY_DIR}
   mvn assembly:assembly -Dmain.class=org.kedar.mrx.WordCount2 > /dev/null 2>&1
@@ -28,17 +29,37 @@ build_maven () {
 ensure_input_output () {
     if [[ ! -d ${INPUT_DIR} ]]
     then
-      mkdir ${INPUT_DIR}
+      mkdir -p ${INPUT_DIR}
     fi
     NFILES=$(ls -laq ${INPUT_DIR} | wc -l)
     if [[ NFILES -ge 10 ]]
     then
         # no need to download the files
         echo "we have ${NFILES} files here, so no need to download"
+    else
+      echo "downloading gutenberg files ..."
+      ${MY_DIR}/download-gutenberg.sh 0 1
     fi
-    echo "downloading gutenberg files ..."
-    ${MY_DIR}/download-gutenberg.sh 0 1
     mkdir -p ${OUTPUT_DIR}
 }
+run_hadoop_jar () {
+  if [[ -d ${OUTPUT_DIR} ]]
+  then
+    \rm -rf ${OUTPUT_DIR}
+  fi
+  # ensure that the input files are there in hdfs
+  hdfs dfs -ls ${HDFS_INPUT_DIR}
+  if [[ $? -ne 0 ]]
+  then
+    echo "hdfs does not recognize the input directory yet, running hdfs dfs -mkdir"
+    hdfs dfs -mkdir ${HDFS_INPUT_DIR}
+  fi
+  echo "copying input files into HDFS"
+  hdfs dfs -copyFromLocal ${INPUT_DIR} ${HDFS_INPUT_DIR}
+  mkdir -p ${OUTPUT_DIR}
+  hadoop jar ${HADOOP_JAR} input output
+}
+
 build_maven
 ensure_input_output
+run_hadoop_jar
