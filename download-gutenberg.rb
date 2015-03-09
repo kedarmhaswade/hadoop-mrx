@@ -26,12 +26,12 @@ def download_books_from u
       unless File.exists? file_name
         c = download url, file_name
       end
-      code = system "unzip #{file_name} -d txtbooks" # unzip regardless
+      code = system "unzip -o #{file_name} -d txtbooks" # unzip regardless
     else
     end
   end
 end
 low.upto high do |i|
-  offset_url = "http://www.gutenberg.org/robot/harvest?offset=#{i}"
+  offset_url = "http://www.gutenberg.org/robot/harvest?filetypes[]=txt&langs[]=en&offset=#{i}"
   download_books_from(offset_url)
 end

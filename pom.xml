@@ -12,6 +12,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <main.class>org.kedar.mrx.FlightsByCarrier</main.class>
     </properties>
 
     <dependencies>
@@ -65,7 +66,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.kedar.mrx.FlightsByCarrier</mainClass>
+                            <mainClass>${main.class}</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
