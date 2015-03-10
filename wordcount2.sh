@@ -15,7 +15,8 @@ MY_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 INPUT_DIR=${MY_DIR}/txtbooks
 OUTPUT_DIR=${MY_DIR}/wordcount
 HADOOP_JAR=${MY_DIR}/target/hadoop-mr-ex-1.0-SNAPSHOT-jar-with-dependencies.jar
-HDFS_INPUT_DIR=wordcount2
+HDFS_INPUT_DIR=wordcount2-input
+HDFS_OUTPUT_DIR=wordcount2-output
 build_maven () {
   cd ${MY_DIR}
   mvn assembly:assembly -Dmain.class=org.kedar.mrx.WordCount2 > /dev/null 2>&1
@@ -43,6 +44,11 @@ ensure_input_output () {
     mkdir -p ${OUTPUT_DIR}
 }
 run_hadoop_jar () {
+  # follow the excellent guide at: http://www.alexjf.net/blog/distributed-systems/hadoop-yarn-installation-definitive-guide/
+  # to make sure your hadoop cluster/standalone setup is working alright
+  # There is a test-hadoop script that ensures if your hadoop is working okay.
+  # $HADOOP_PREFIX/bin/hadoop jar $HADOOP_PREFIX/share/hadoop/yarn/hadoop-yarn-applications-distributedshell-2.6.0.jar org.apache.hadoop.yarn.applications.distributedshell.Client --jar $HADOOP_PREFIX/share/hadoop/yarn/hadoop-yarn-applications-distributedshell-2.6.0.jar --shell_command date --num_containers 2 --master_memory 1024
+
   if [[ -d ${OUTPUT_DIR} ]]
   then
     \rm -rf ${OUTPUT_DIR}
@@ -53,11 +59,14 @@ run_hadoop_jar () {
   then
     echo "hdfs does not recognize the input directory yet, running hdfs dfs -mkdir"
     hdfs dfs -mkdir ${HDFS_INPUT_DIR}
+    echo "copying input files into HDFS"
+    hdfs dfs -copyFromLocal ${INPUT_DIR} ${HDFS_INPUT_DIR}
+  else
+    echo "The directory ${HDFS_INPUT_DIR} already exists in HDFS, so no need to create or copy files from local there"
   fi
-  echo "copying input files into HDFS"
-  hdfs dfs -copyFromLocal ${INPUT_DIR} ${HDFS_INPUT_DIR}
-  mkdir -p ${OUTPUT_DIR}
-  hadoop jar ${HADOOP_JAR} input output
+  # make sure we delete the hdfs output folder
+  hdfs dfs -rm -r ${HDFS_OUTPUT_DIR}
+  hadoop jar ${HADOOP_JAR} ${HDFS_INPUT_DIR} ${HDFS_OUTPUT_DIR}
 }
 
 build_maven
