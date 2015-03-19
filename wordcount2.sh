@@ -13,13 +13,15 @@ source ${HOME}/scripts/bash_functions.sh
 # our input directory is going to be txtbooks
 MY_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 INPUT_DIR=${MY_DIR}/txtbooks
+BIG_INPUT_FILE=wordcount2-big-input.txt
 OUTPUT_DIR=${MY_DIR}/wordcount
 HADOOP_JAR=${MY_DIR}/target/hadoop-mr-ex-1.0-SNAPSHOT-jar-with-dependencies.jar
 HDFS_INPUT_DIR=wordcount2-input
 HDFS_OUTPUT_DIR=wordcount2-output
 build_maven () {
+  echo "maven ritual first ..."
   cd ${MY_DIR}
-  mvn assembly:assembly -Dmain.class=org.kedar.mrx.WordCount2 > /dev/null 2>&1
+  mvn clean assembly:assembly -Dmain.class=org.kedar.mrx.WordCount2 > /dev/null 2>&1
   if [[ $? -ne 0 ]]
   then
     echo "Maven build failed, look into maven hell, exiting for now ..."
@@ -41,6 +43,8 @@ ensure_input_output () {
       echo "downloading gutenberg files ..."
       ${MY_DIR}/download-gutenberg.sh 0 1
     fi
+    # Hadoop wants one large file
+    cat ${INPUT_DIR}/*.txt > ${INPUT_DIR}/${BIG_INPUT_FILE}
     mkdir -p ${OUTPUT_DIR}
 }
 run_hadoop_jar () {
@@ -53,20 +57,25 @@ run_hadoop_jar () {
   then
     \rm -rf ${OUTPUT_DIR}
   fi
+  # start from a clean slate
+  hdfs dfs -ls -R -h ${HDFS_INPUT_DIR}
   # ensure that the input files are there in hdfs
   hdfs dfs -ls ${HDFS_INPUT_DIR}
   if [[ $? -ne 0 ]]
   then
     echo "hdfs does not recognize the input directory yet, running hdfs dfs -mkdir"
     hdfs dfs -mkdir ${HDFS_INPUT_DIR}
-    echo "copying input files into HDFS"
-    hdfs dfs -copyFromLocal ${INPUT_DIR} ${HDFS_INPUT_DIR}
+    echo "copying the large input file into HDFS"
+    hdfs dfs -copyFromLocal ${INPUT_DIR}/${BIG_INPUT_FILE} ${HDFS_INPUT_DIR}
   else
     echo "The directory ${HDFS_INPUT_DIR} already exists in HDFS, so no need to create or copy files from local there"
   fi
   # make sure we delete the hdfs output folder
   hdfs dfs -rm -r ${HDFS_OUTPUT_DIR}
-  hadoop jar ${HADOOP_JAR} ${HDFS_INPUT_DIR} ${HDFS_OUTPUT_DIR}
+  echo "leaving safe mode (just in case ...)"
+  hdfs dfsadmin -safemode leave  
+  /usr/bin/time hadoop jar ${HADOOP_JAR} ${HDFS_INPUT_DIR} ${HDFS_OUTPUT_DIR}
+  echo "observe the time (wall-clock time and CPU time) taken by the hadoop command"
 }
 
 build_maven
